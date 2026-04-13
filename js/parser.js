@@ -2,6 +2,27 @@
  * Heuristic parser: extracts calendar events from raw OCR text.
  * Designed for table/schedule-style layouts with rows of Date | Time | Event.
  */
+import { parseFlexibleTime, addHours } from './utils.js';
+
+/**
+ * Format a time object { hours, minutes } back into a readable string like "10:00 AM".
+ */
+function formatTime({ hours, minutes }) {
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const h = hours % 12 || 12;
+    const mm = String(minutes).padStart(2, '0');
+    return `${h}:${mm} ${period}`;
+}
+
+/**
+ * If no end time was found but we have a start time, default end to start + 1 hour.
+ */
+function defaultEndTime(startTimeStr, endTimeStr) {
+    if (endTimeStr || !startTimeStr) return endTimeStr;
+    const parsed = parseFlexibleTime(startTimeStr);
+    if (!parsed) return '';
+    return formatTime(addHours(parsed, 1));
+}
 
 // Date patterns
 const DATE_PATTERNS = [
@@ -106,7 +127,7 @@ export function parseEventsFromText(rawText) {
             events.push({
                 date: currentDate,
                 startTime: timeResult.startTime,
-                endTime: timeResult.endTime,
+                endTime: defaultEndTime(timeResult.startTime, timeResult.endTime),
                 title,
                 location: '',
             });
