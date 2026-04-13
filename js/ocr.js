@@ -1,36 +1,100 @@
 /**
- * Tesseract.js OCR wrapper with image preprocessing.
+ * Tesseract.js OCR wrapper with adaptive image preprocessing.
  */
+
+// Tesseract works best when text is at least ~30px tall.
+// Upscale small images so text hits that threshold.
+const MIN_OCR_WIDTH = 1000;
 
 /**
- * Preprocess an image on a canvas for better OCR accuracy.
- * Converts to grayscale and applies threshold binarization.
- * Returns a canvas element.
+ * Analyze image brightness to determine if it's a screenshot or camera photo.
+ * Screenshots: bright, low variance (white/light background, clean text)
+ * Camera photos: darker, high variance (uneven lighting, shadows, paper texture)
  */
-function preprocessImage(img) {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    canvas.width = img.naturalWidth || img.width;
-    canvas.height = img.naturalHeight || img.height;
-
-    ctx.drawImage(img, 0, 0);
-
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+function analyzeImage(imageData) {
     const data = imageData.data;
+    const pixelCount = data.length / 4;
+    let sum = 0;
+    let sumSq = 0;
 
-    // Grayscale + threshold binarization
-    const threshold = 140;
     for (let i = 0; i < data.length; i += 4) {
         const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-        const val = gray > threshold ? 255 : 0;
-        data[i] = val;
-        data[i + 1] = val;
-        data[i + 2] = val;
+        sum += gray;
+        sumSq += gray * gray;
     }
 
-    ctx.putImageData(imageData, 0, 0);
-    return canvas;
+    const mean = sum / pixelCount;
+    const variance = (sumSq / pixelCount) - (mean * mean);
+
+    return {
+        mean,
+        variance,
+        isScreenshot: mean > 180 && variance < 8000,
+    };
+}
+
+/**
+ * Preprocess an image for OCR.
+ *
+ * Strategy:
+ *   - Screenshots (bright, clean): upscale if small, keep as grayscale.
+ *     No binarization — Tesseract handles clean screenshots best with anti-aliased edges intact.
+ *   - Camera photos (dark, noisy): grayscale + threshold binarization to cut through
+ *     uneven lighting and paper textures, then upscale.
+ *
+ * Returns a canvas element ready for Tesseract.
+ */
+function preprocessImage(img) {
+    const srcCanvas = document.createElement('canvas');
+    const srcCtx = srcCanvas.getContext('2d');
+
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    srcCanvas.width = w;
+    srcCanvas.height = h;
+    srcCtx.drawImage(img, 0, 0);
+
+    const imageData = srcCtx.getImageData(0, 0, w, h);
+    const { isScreenshot } = analyzeImage(imageData);
+    const data = imageData.data;
+
+    if (isScreenshot) {
+        // Convert to grayscale only — preserve anti-aliased text edges
+        for (let i = 0; i < data.length; i += 4) {
+            const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+            data[i] = gray;
+            data[i + 1] = gray;
+            data[i + 2] = gray;
+        }
+    } else {
+        // Camera photo: grayscale + threshold binarization
+        const threshold = 140;
+        for (let i = 0; i < data.length; i += 4) {
+            const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+            const val = gray > threshold ? 255 : 0;
+            data[i] = val;
+            data[i + 1] = val;
+            data[i + 2] = val;
+        }
+    }
+
+    srcCtx.putImageData(imageData, 0, 0);
+
+    // Upscale small images for better OCR accuracy
+    // Tesseract accuracy improves significantly when text is larger
+    if (w < MIN_OCR_WIDTH) {
+        const scale = Math.min(2, MIN_OCR_WIDTH / w);
+        const outCanvas = document.createElement('canvas');
+        outCanvas.width = Math.round(w * scale);
+        outCanvas.height = Math.round(h * scale);
+        const outCtx = outCanvas.getContext('2d');
+        outCtx.imageSmoothingEnabled = true;
+        outCtx.imageSmoothingQuality = 'high';
+        outCtx.drawImage(srcCanvas, 0, 0, outCanvas.width, outCanvas.height);
+        return outCanvas;
+    }
+
+    return srcCanvas;
 }
 
 /**

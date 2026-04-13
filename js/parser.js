@@ -125,6 +125,7 @@ export function parseEventsFromText(rawText) {
         const dateResult = extractDate(line);
         let currentDate = lastDate;
         let rest = line;
+        const hasOwnDate = !!dateResult;
 
         if (dateResult) {
             currentDate = dateResult.match;
@@ -134,6 +135,11 @@ export function parseEventsFromText(rawText) {
 
         // Extract times
         const timeResult = extractTimes(rest);
+        const hasTime = !!timeResult.startTime;
+
+        // Lines that inherit a date (no date of their own) must have a time
+        // to be considered events — otherwise they're likely footer text or noise
+        if (!hasOwnDate && !hasTime) continue;
 
         // Strip day-of-week names (they're part of the date, not the event title)
         let title = cleanTitle(timeResult.remaining.replace(DAY_NAMES, ' '));
