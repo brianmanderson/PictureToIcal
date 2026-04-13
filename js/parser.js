@@ -24,6 +24,20 @@ function defaultEndTime(startTimeStr, endTimeStr) {
     return formatTime(addHours(parsed, 1));
 }
 
+/** Day-of-week names to strip from remaining text (they're part of the date, not the title). */
+const DAY_NAMES = /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)\b\.?/gi;
+
+/**
+ * Pre-process a line to fix common OCR artifacts:
+ * - Insert space between month name and day number when missing ("April13" → "April 13")
+ */
+function fixOCRArtifacts(line) {
+    return line.replace(
+        /\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)(\d)/gi,
+        '$1 $2'
+    );
+}
+
 // Date patterns
 const DATE_PATTERNS = [
     // MM/DD/YYYY, MM-DD-YYYY, MM.DD.YYYY (and 2-digit year)
@@ -97,7 +111,7 @@ function cleanTitle(str) {
 export function parseEventsFromText(rawText) {
     if (!rawText) return [];
 
-    const lines = rawText.split('\n').map((l) => l.trim()).filter(Boolean);
+    const lines = rawText.split('\n').map((l) => fixOCRArtifacts(l.trim())).filter(Boolean);
     const events = [];
     let lastDate = '';
 
@@ -120,7 +134,14 @@ export function parseEventsFromText(rawText) {
 
         // Extract times
         const timeResult = extractTimes(rest);
-        const title = cleanTitle(timeResult.remaining);
+
+        // Strip day-of-week names (they're part of the date, not the event title)
+        let title = cleanTitle(timeResult.remaining.replace(DAY_NAMES, ' '));
+
+        // If no title remains but we have a date+time, use a generic label
+        if (!title && currentDate) {
+            title = 'Event';
+        }
 
         // Only create event if we have at least a title and a date
         if (title && currentDate) {

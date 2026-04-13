@@ -27,6 +27,8 @@ const eventsBody = document.getElementById('events-body');
 const btnAddRow = document.getElementById('btn-add-row');
 const btnDownload = document.getElementById('btn-download');
 
+const btnBackUpload = document.getElementById('btn-back-upload');
+
 const downloadSummary = document.getElementById('download-summary');
 const btnDownloadAgain = document.getElementById('btn-download-again');
 const btnStartOver = document.getElementById('btn-start-over');
@@ -54,43 +56,42 @@ function goToStep(num) {
 
 // ── Image Loading ──
 function loadImage(file) {
-    if (!file || !file.type.startsWith('image/')) return;
+    if (!file) return;
+    // Accept any image type; some mobile cameras report unusual MIME types
+    if (file.type && !file.type.startsWith('image/')) return;
     currentFile = file;
 
     // Use createImageBitmap to properly handle EXIF orientation from mobile cameras,
     // then draw to a canvas to produce a reliable image for OCR.
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-        URL.revokeObjectURL(url);
-        // createImageBitmap respects EXIF orientation in modern browsers
-        createImageBitmap(img).then((bitmap) => {
-            const canvas = document.createElement('canvas');
-            canvas.width = bitmap.width;
-            canvas.height = bitmap.height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(bitmap, 0, 0);
-            const dataURL = canvas.toDataURL('image/png');
-            previewImg.src = dataURL;
+    createImageBitmap(file).then((bitmap) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(bitmap, 0, 0);
+        previewImg.src = canvas.toDataURL('image/png');
+        dropZone.classList.add('hidden');
+        imagePreview.classList.remove('hidden');
+    }).catch(() => {
+        // Fallback: load via object URL
+        const url = URL.createObjectURL(file);
+        previewImg.onload = () => {
+            URL.revokeObjectURL(url);
             dropZone.classList.add('hidden');
             imagePreview.classList.remove('hidden');
-        }).catch(() => {
-            // Fallback: use original image directly
-            previewImg.src = img.src;
-            dropZone.classList.add('hidden');
-            imagePreview.classList.remove('hidden');
-        });
-    };
-    img.onerror = () => {
-        URL.revokeObjectURL(url);
-        alert('Could not load the image. Please try a different file.');
-    };
-    img.src = url;
+        };
+        previewImg.onerror = () => {
+            URL.revokeObjectURL(url);
+            alert('Could not load the image. Please try a different file.');
+        };
+        previewImg.src = url;
+    });
 }
 
 function clearImage() {
     currentFile = null;
     previewImg.src = '';
+    fileInput.value = '';  // Reset so re-selecting the same file triggers change
     dropZone.classList.remove('hidden');
     imagePreview.classList.add('hidden');
 }
@@ -101,6 +102,13 @@ fileInput.addEventListener('change', (e) => {
 });
 
 dropZone.addEventListener('click', () => fileInput.click());
+
+dropZone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        fileInput.click();
+    }
+});
 
 dropZone.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -264,6 +272,13 @@ function doDownload() {
 }
 
 btnDownload.addEventListener('click', doDownload);
+
+btnBackUpload.addEventListener('click', () => {
+    clearImage();
+    eventsBody.innerHTML = '';
+    rawTextArea.value = '';
+    goToStep(1);
+});
 
 btnDownloadAgain.addEventListener('click', () => {
     if (lastICS) downloadICS(lastICS);

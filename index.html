@@ -36,7 +36,7 @@
                     <p><strong>Drop an image here</strong>, paste from clipboard, or</p>
                     <label class="file-btn">
                         Browse files
-                        <input type="file" id="file-input" accept="image/*" capture="environment" hidden>
+                        <input type="file" id="file-input" accept="image/*" hidden>
                     </label>
                 </div>
             </div>
@@ -81,7 +81,10 @@
             </div>
             <div class="table-actions">
                 <button id="btn-add-row" class="btn-secondary" type="button">+ Add Row</button>
-                <button id="btn-download" class="btn-primary" type="button">Download .ics</button>
+                <div class="table-actions-right">
+                    <button id="btn-back-upload" class="btn-secondary" type="button">Try Different Image</button>
+                    <button id="btn-download" class="btn-primary" type="button">Download .ics</button>
+                </div>
             </div>
         </section>
 
