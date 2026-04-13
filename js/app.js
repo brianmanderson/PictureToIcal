@@ -55,33 +55,76 @@ function goToStep(num) {
 }
 
 // ── Image Loading ──
+const loadingImage = document.getElementById('loading-image');
+
+// Max dimension for OCR — large phone photos are downscaled for speed
+const MAX_IMAGE_DIM = 2000;
+
+function showImageLoading() {
+    dropZone.classList.add('hidden');
+    imagePreview.classList.add('hidden');
+    loadingImage.classList.remove('hidden');
+}
+
+function hideImageLoading() {
+    loadingImage.classList.add('hidden');
+}
+
+function showPreview() {
+    hideImageLoading();
+    imagePreview.classList.remove('hidden');
+}
+
 function loadImage(file) {
     if (!file) return;
     // Accept any image type; some mobile cameras report unusual MIME types
     if (file.type && !file.type.startsWith('image/')) return;
     currentFile = file;
+    showImageLoading();
 
-    // Use createImageBitmap to properly handle EXIF orientation from mobile cameras,
-    // then draw to a canvas to produce a reliable image for OCR.
+    // Use createImageBitmap to handle EXIF orientation from mobile cameras
     createImageBitmap(file).then((bitmap) => {
+        // Downscale large images for faster OCR and preview rendering
+        let w = bitmap.width;
+        let h = bitmap.height;
+        if (w > MAX_IMAGE_DIM || h > MAX_IMAGE_DIM) {
+            const scale = MAX_IMAGE_DIM / Math.max(w, h);
+            w = Math.round(w * scale);
+            h = Math.round(h * scale);
+        }
+
         const canvas = document.createElement('canvas');
-        canvas.width = bitmap.width;
-        canvas.height = bitmap.height;
+        canvas.width = w;
+        canvas.height = h;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(bitmap, 0, 0);
-        previewImg.src = canvas.toDataURL('image/png');
-        dropZone.classList.add('hidden');
-        imagePreview.classList.remove('hidden');
+        ctx.drawImage(bitmap, 0, 0, w, h);
+
+        // Use toBlob (async, non-blocking) instead of toDataURL
+        canvas.toBlob((blob) => {
+            if (!blob) {
+                // Fallback to dataURL if toBlob fails
+                previewImg.src = canvas.toDataURL('image/png');
+                showPreview();
+                return;
+            }
+            const url = URL.createObjectURL(blob);
+            previewImg.onload = () => {
+                URL.revokeObjectURL(url);
+                showPreview();
+            };
+            previewImg.src = url;
+        }, 'image/png');
     }).catch(() => {
-        // Fallback: load via object URL
+        // Fallback: load via object URL directly
         const url = URL.createObjectURL(file);
         previewImg.onload = () => {
             URL.revokeObjectURL(url);
-            dropZone.classList.add('hidden');
-            imagePreview.classList.remove('hidden');
+            showPreview();
         };
         previewImg.onerror = () => {
             URL.revokeObjectURL(url);
+            hideImageLoading();
+            dropZone.classList.remove('hidden');
             alert('Could not load the image. Please try a different file.');
         };
         previewImg.src = url;
@@ -92,6 +135,7 @@ function clearImage() {
     currentFile = null;
     previewImg.src = '';
     fileInput.value = '';  // Reset so re-selecting the same file triggers change
+    hideImageLoading();
     dropZone.classList.remove('hidden');
     imagePreview.classList.add('hidden');
 }
