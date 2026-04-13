@@ -56,11 +56,36 @@ function goToStep(num) {
 function loadImage(file) {
     if (!file || !file.type.startsWith('image/')) return;
     currentFile = file;
+
+    // Use createImageBitmap to properly handle EXIF orientation from mobile cameras,
+    // then draw to a canvas to produce a reliable image for OCR.
     const url = URL.createObjectURL(file);
-    previewImg.src = url;
-    previewImg.onload = () => URL.revokeObjectURL(url);
-    dropZone.classList.add('hidden');
-    imagePreview.classList.remove('hidden');
+    const img = new Image();
+    img.onload = () => {
+        URL.revokeObjectURL(url);
+        // createImageBitmap respects EXIF orientation in modern browsers
+        createImageBitmap(img).then((bitmap) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = bitmap.width;
+            canvas.height = bitmap.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(bitmap, 0, 0);
+            const dataURL = canvas.toDataURL('image/png');
+            previewImg.src = dataURL;
+            dropZone.classList.add('hidden');
+            imagePreview.classList.remove('hidden');
+        }).catch(() => {
+            // Fallback: use original image directly
+            previewImg.src = img.src;
+            dropZone.classList.add('hidden');
+            imagePreview.classList.remove('hidden');
+        });
+    };
+    img.onerror = () => {
+        URL.revokeObjectURL(url);
+        alert('Could not load the image. Please try a different file.');
+    };
+    img.src = url;
 }
 
 function clearImage() {
