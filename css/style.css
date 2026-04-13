@@ -1,0 +1,332 @@
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --bg: #f8f9fa;
+    --surface: #ffffff;
+    --text: #1a1a2e;
+    --text-muted: #6b7280;
+    --primary: #4f46e5;
+    --primary-hover: #4338ca;
+    --border: #e5e7eb;
+    --success: #10b981;
+    --danger: #ef4444;
+    --radius: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #0f172a;
+        --surface: #1e293b;
+        --text: #e2e8f0;
+        --text-muted: #94a3b8;
+        --primary: #6366f1;
+        --primary-hover: #818cf8;
+        --border: #334155;
+        --shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Layout ── */
+header {
+    text-align: center;
+    padding: 2rem 1rem 0.5rem;
+}
+header h1 { font-size: 1.75rem; font-weight: 700; }
+.subtitle { color: var(--text-muted); margin-top: 0.25rem; }
+
+main {
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 1rem;
+    flex: 1;
+}
+
+footer {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+/* ── Step Indicator ── */
+.steps ol {
+    display: flex;
+    justify-content: center;
+    gap: 0.25rem;
+    list-style: none;
+    margin-bottom: 1.5rem;
+}
+
+.step {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    border-radius: 999px;
+    transition: all 0.2s;
+}
+
+.step.active {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.step.done {
+    color: var(--success);
+}
+
+.step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.step.active .step-num {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.step.done .step-num {
+    background: var(--success);
+    color: white;
+    border-color: var(--success);
+}
+
+/* ── Panels ── */
+.panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    box-shadow: var(--shadow);
+}
+
+.panel.hidden { display: none; }
+
+.panel h2 { margin-bottom: 0.5rem; font-size: 1.25rem; }
+
+.hint { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem; }
+
+/* ── Drop Zone ── */
+#drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+#drop-zone:hover, #drop-zone.dragover {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 5%, transparent);
+}
+
+.drop-zone-content p { margin: 0.75rem 0; color: var(--text-muted); }
+.upload-icon { color: var(--text-muted); margin-bottom: 0.5rem; }
+
+/* ── Buttons ── */
+.btn-primary, .btn-secondary, .file-btn {
+    display: inline-block;
+    padding: 0.5rem 1.25rem;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s, transform 0.1s;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-primary:active { transform: scale(0.98); }
+
+.btn-secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+.btn-secondary:hover { background: var(--border); }
+
+.file-btn {
+    background: var(--primary);
+    color: white;
+    cursor: pointer;
+}
+.file-btn:hover { background: var(--primary-hover); }
+
+/* ── Image Preview ── */
+#image-preview {
+    margin-top: 1rem;
+    text-align: center;
+}
+#image-preview.hidden { display: none; }
+
+#preview-img {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    margin-bottom: 1rem;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#image-preview button { margin: 0 0.25rem; }
+
+/* ── Progress Bar ── */
+.progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 1rem 0 0.5rem;
+}
+
+.progress-bar {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.progress-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* ── Raw Text ── */
+#raw-text-details { margin-top: 1rem; }
+#raw-text-details summary {
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+#raw-text {
+    width: 100%;
+    margin-top: 0.5rem;
+    padding: 0.75rem;
+    font-family: "Cascadia Code", "Fira Code", monospace;
+    font-size: 0.8rem;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    resize: vertical;
+}
+
+/* ── Events Table ── */
+.table-wrapper {
+    overflow-x: auto;
+    margin-bottom: 1rem;
+}
+
+#events-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+#events-table th {
+    text-align: left;
+    padding: 0.5rem 0.4rem;
+    border-bottom: 2px solid var(--border);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+#events-table td {
+    padding: 0.3rem 0.25rem;
+    border-bottom: 1px solid var(--border);
+}
+
+#events-table input {
+    width: 100%;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text);
+    font-size: 0.9rem;
+    font-family: inherit;
+}
+
+#events-table input:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: var(--bg);
+}
+
+.btn-delete-row {
+    background: none;
+    border: none;
+    color: var(--danger);
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+}
+.btn-delete-row:hover { opacity: 1; }
+
+.table-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* ── Success / Download ── */
+.success-message {
+    text-align: center;
+    padding: 1rem 0;
+}
+
+.success-message svg { color: var(--success); margin-bottom: 0.5rem; }
+.success-message h2 { color: var(--success); margin-bottom: 0.25rem; }
+.success-message p { color: var(--text-muted); margin-bottom: 1.25rem; }
+
+.download-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+    main { padding: 0.5rem; }
+    .panel { padding: 1.25rem; }
+    #drop-zone { padding: 2rem 1rem; }
+    .steps ol { gap: 0; }
+    .step { font-size: 0.75rem; padding: 0.3rem 0.5rem; }
+}
