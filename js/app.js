@@ -75,15 +75,31 @@ function showPreview() {
     imagePreview.classList.remove('hidden');
 }
 
-function loadImage(file) {
+/**
+ * Set the preview image src and wait for it to load.
+ * Resolves when loaded, rejects on error or timeout.
+ */
+function setPreviewSrc(src, timeoutMs = 15000) {
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('Image load timed out')), timeoutMs);
+        // Clean up any previous handlers
+        previewImg.onload = () => { clearTimeout(timer); resolve(); };
+        previewImg.onerror = () => { clearTimeout(timer); reject(new Error('Image failed to load')); };
+        previewImg.src = src;
+    });
+}
+
+async function loadImage(file) {
     if (!file) return;
     // Accept any image type; some mobile cameras report unusual MIME types
     if (file.type && !file.type.startsWith('image/')) return;
     currentFile = file;
     showImageLoading();
 
-    // Use createImageBitmap to handle EXIF orientation from mobile cameras
-    createImageBitmap(file).then((bitmap) => {
+    try {
+        // Try createImageBitmap first — handles EXIF orientation from mobile cameras
+        const bitmap = await createImageBitmap(file);
+
         // Downscale large images for faster OCR and preview rendering
         let w = bitmap.width;
         let h = bitmap.height;
@@ -96,39 +112,33 @@ function loadImage(file) {
         const canvas = document.createElement('canvas');
         canvas.width = w;
         canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(bitmap, 0, 0, w, h);
+        canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
 
-        // Use toBlob (async, non-blocking) instead of toDataURL
-        canvas.toBlob((blob) => {
-            if (!blob) {
-                // Fallback to dataURL if toBlob fails
-                previewImg.src = canvas.toDataURL('image/png');
-                showPreview();
-                return;
-            }
+        // Convert canvas to blob (async, non-blocking) then display
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+        if (blob) {
             const url = URL.createObjectURL(blob);
-            previewImg.onload = () => {
-                URL.revokeObjectURL(url);
-                showPreview();
-            };
-            previewImg.src = url;
-        }, 'image/png');
-    }).catch(() => {
-        // Fallback: load via object URL directly
-        const url = URL.createObjectURL(file);
-        previewImg.onload = () => {
+            await setPreviewSrc(url);
+            URL.revokeObjectURL(url);
+        } else {
+            // toBlob returned null — use dataURL fallback
+            await setPreviewSrc(canvas.toDataURL('image/png'));
+        }
+
+        showPreview();
+    } catch {
+        // Fallback: load the file directly via object URL (handles HEIC on older iOS, etc.)
+        try {
+            const url = URL.createObjectURL(file);
+            await setPreviewSrc(url);
             URL.revokeObjectURL(url);
             showPreview();
-        };
-        previewImg.onerror = () => {
-            URL.revokeObjectURL(url);
+        } catch {
             hideImageLoading();
             dropZone.classList.remove('hidden');
             alert('Could not load the image. Please try a different file.');
-        };
-        previewImg.src = url;
-    });
+        }
+    }
 }
 
 function clearImage() {
@@ -145,7 +155,11 @@ fileInput.addEventListener('change', (e) => {
     if (e.target.files[0]) loadImage(e.target.files[0]);
 });
 
-dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('click', (e) => {
+    // Don't trigger a second file picker if the click came from the label or input itself
+    if (e.target === fileInput || e.target.closest('.file-btn')) return;
+    fileInput.click();
+});
 
 dropZone.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
