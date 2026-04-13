@@ -17,7 +17,7 @@ Upload a photo of a calendar or schedule, extract the events, and download a `.i
 
 Visit the hosted version (no install needed):
 
-> **https://your-username.github.io/PictureToICal/**
+> **https://BrianMAnderson.github.io/PictureToICal/**
 
 ### Run Locally
 
